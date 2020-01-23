@@ -86,11 +86,11 @@ class ConfiguredSentry(DummySentry):
 
         dsn = conf.get("sentry", "sentry_dsn")
         if dsn:
-            init(dsn=dsn, integrations=integrations)
+            init(dsn=dsn, integrations=integrations, before_send=before_send)
         else:
             # Setting up Sentry using environment variables.
             log.debug("Defaulting to SENTRY_DSN in environment.")
-            init(integrations=integrations)
+            init(integrations=integrations, before_send=before_send)
 
     def add_tagging(self, task_instance):
         """
@@ -104,6 +104,11 @@ class ConfiguredSentry(DummySentry):
                 if tag_name == "operator":
                     attribute = task.__class__.__name__
                 scope.set_tag(tag_name, attribute)
+    
+    def before_send(event, hint):
+        if event['tags'].get('DAG'):
+            event['fingerprint'] = [event['tags'].get('DAG')]
+        return event
 
     @provide_session
     def add_breadcrumbs(self, task_instance, session=None):
